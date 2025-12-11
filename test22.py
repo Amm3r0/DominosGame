@@ -1,4 +1,4 @@
-import pygame
+import pygame  
 import random
 import sys
 import os
@@ -25,7 +25,7 @@ BASE_PATH = r"D:\learn\Dominos Game\Media"
 # مقاسات الكارت
 CARD_W, CARD_H = 60, 120  
 STOCK_AREA_WIDTH = 220     
-GAP = 2 # مسافة صغيرة بين الكروت للتلامس
+GAP = 2
 
 class Domino:
     def __init__(self, v1, v2):
@@ -173,9 +173,11 @@ class AdvancedAI:
                         best_move_this_depth = move
                 if best_move_this_depth:
                     best_move_global = best_move_this_depth
+                  
         except TimeoutError: pass
         
         target_card_obj = ai_hand_objects[best_move_global['idx']]
+
         return {'card': target_card_obj, 'side': best_move_global['side']}
 
 # ---------------------------------------------------------
@@ -242,7 +244,6 @@ class DominoGame:
                 else:
                     s = pygame.Surface((CARD_W, CARD_H)); s.fill(WHITE); pygame.draw.rect(s,BLACK,(0,0,CARD_W,CARD_H),2)
                     self.assets[f"{i}-{j}"] = s
-
     def start_new_round(self):
         self.round_num += 1
         all_doms = []
@@ -275,7 +276,7 @@ class DominoGame:
                     if c.v1 == i and c.v2 == i:
                         self.turn = 'player'
                         self.forced_start_card = c 
-                        self.set_message(f"ابدأ بـ {c}")
+                        self.set_message(f"start with{c}")
                         return
                 for c in self.comp_hand:
                     if c.v1 == i and c.v2 == i:
@@ -289,7 +290,7 @@ class DominoGame:
             if p_max_card.get_value() >= c_max_card.get_value():
                 self.turn = 'player'
                 self.forced_start_card = p_max_card
-                self.set_message(f"ابدأ بـ {p_max_card}")
+                self.set_message(f"start with{p_max_card}")
             else:
                 self.turn = 'comp'
                 self.forced_start_card = c_max_card
@@ -309,7 +310,6 @@ class DominoGame:
         
         if not self.board:
             card.is_start = True
-            # البداية: اتجاه none، لكن الرسم هيتعامل معاه
             self.board.append({'card': card, 'connect_val': None, 'dir': 'none'}) 
             self.ends = [card.v1, card.v2]
         else:
@@ -357,10 +357,10 @@ class DominoGame:
         self.round_active = False
         self.last_winner = winner
         pts = points
+
         if pts is None:
             opp = self.comp_hand if winner == 'player' else self.player_hand
             pts = sum(d.get_value() for d in opp)
-        
         if winner == 'player':
             self.player_score += pts
             self.set_message(f"{reason} +{pts}")
@@ -371,38 +371,32 @@ class DominoGame:
         
         self.wait_timer = pygame.time.get_ticks()
 
-    # --- خوارزمية الرسم المحسنة (Prevent Overlap) ---
+
     def calculate_layout(self):
         if not self.board:
             c = (SCREEN_WIDTH//2, SCREEN_HEIGHT//2)
             return [], c, c
 
-        # 1. تحديد مركز البداية
         start_idx = 0
         for i, item in enumerate(self.board):
             if item['card'].is_start: start_idx = i; break
         
         layout_map = {}
         
-        # الأبعاد
-        S_LEN = CARD_H # طول الكارت العادي (120)
-        S_WID = CARD_W # عرض الكارت العادي (60)
+        S_LEN = CARD_H 
+        S_WID = CARD_W 
         
-        # حدود الشاشة للكسر
+
         GRID_LIMIT_X = 450 
-        
-        # --- معالجة كارت البداية ---
+
         start_item = self.board[start_idx]
         s_card = start_item['card']
         
-        # لو دوش: واقف (Angle 0). لو عادي: نايم (Angle 90).
         if s_card.is_double:
             start_angle = 0
-            # في وضع 0: العرض 60 والطول 120
             w_start, h_start = S_WID, S_LEN 
         else:
             start_angle = 90
-            # في وضع 90: العرض 120 والطول 60
             w_start, h_start = S_LEN, S_WID
             
         layout_map[start_idx] = {
@@ -411,116 +405,83 @@ class DominoGame:
             'angle': start_angle, 'item': start_item
         }
 
-        # --- دالة مساعدة لحساب زاوية وأبعاد الكارت التالي ---
+
         def resolve_card_orientation(card, connect_val, direction):
-            # direction: 1 (Right), -1 (Left)
-            # return: angle, width_in_grid, height_in_grid
+     
             
             if card.is_double:
-                # الدوش دايما واقف (Angle 0) إلا لو حبينا نغيره، بس الستاندرد واقف
+            
                 return 0, S_WID, S_LEN 
             else:
-                # العادي نايم (Angle 90 or 270)
-                # حساب الزاوية عشان النقط تركب صح
-                # لو ماشي يمين (1): لو v1 هو الـ connect يبقى v1 شمال، يبقى الزاوية 90 (v1 left, v2 right)
+
                 if direction == 1:
                     ang = 90 if card.v1 == connect_val else 270
                 else:
-                    # لو ماشي شمال (-1): لو v1 هو الـ connect يبقى v1 يمين، يبقى الزاوية 270 (v1 right, v2 left)
                     ang = 270 if card.v1 == connect_val else 90
                 return ang, S_LEN, S_WID
 
-        # --- معالجة اليمين (Right Chain) ---
-        # نبدأ من حافة كارت البداية اليمين
+
         current_x = w_start / 2 + GAP
         current_y = 0
-        direction = 1 # 1: right, -1: left
+        direction = 1
         
         for i in range(start_idx + 1, len(self.board)):
             item = self.board[i]
             card = item['card']
             con = item['connect_val']
             
-            # نحسب أبعاده المتوقعة لو كملنا في نفس الخط
             ang, w, h = resolve_card_orientation(card, con, direction)
-            
-            # هل وصلنا للحدود؟
-            # نحسب الطرف البعيد للكارت
+        
             far_edge = current_x + w if direction == 1 else current_x - w
             
             at_limit = (direction == 1 and far_edge > GRID_LIMIT_X) or \
                        (direction == -1 and far_edge < -GRID_LIMIT_X)
             
             if at_limit:
-                # --- حالة الكسر (Turn) ---
-                # الكارت ده هينزل تحت (Vertical turn)
-                # دايما بنرسمه واقف (Angle 0/180) عشان الوصلة تبقى راسية
-                
-                # الزاوية الرأسية:
-                # لو connect == v1، يبقى v1 فوق، الزاوية 0
+           
                 turn_angle = 0 if card.v1 == con else 180
                 if card.is_double: turn_angle = 0
                 
-                turn_w, turn_h = S_WID, S_LEN # واقف (60, 120)
+                turn_w, turn_h = S_WID, S_LEN 
                 
-                # الموضع X:
-                # لازم يفضل في نفس مكانه الأفقي (تحت الكارت اللي قبله)
-                # بنرجعه شوية عشان يبقى سنتر تحت طرف اللي قبله
-                # اللي قبله كان عند current_x (من الناحية اللي بنضيف منها)
-                
-                # بنثبت الـ X عند الطرف اللي وصلنا له
-                # بس بنرحل نص عرض الكارت الجديد عشان السنتر
                 if direction == 1: 
-                    draw_x = current_x - (turn_w / 2) # محاولة محاذاة الطرف
-                    # الأفضل: خليه يرجع لورا شوية عشان ميبقاش طاير
+                    draw_x = current_x - (turn_w / 2) 
+                
                     draw_x = current_x - GAP - turn_w/2 
                 else:
                     draw_x = current_x + GAP + turn_w/2
                 
-                # الموضع Y:
-                # ينزل تحت اللي قبله. اللي قبله كان على Y=current_y
-                # وكان ارتفاعه (نص ارتفاعه الفعلي). الكارت الجديد هينزل
-                # المسافة = نصف ارتفاع السابق + جاب + نصف ارتفاع الجديد
-                # بما اننا مش عارفين ارتفاع السابق بدقة هنا (مخزناهوش)، هنفترض الاستاندرد (60)
-                # وننزل مسافة آمنة
+            
                 drop_amount = (S_WID + S_LEN) / 2 + GAP + 10 # 90 + GAP
-                # لكن السابق ممكن يكون دوش (120)، فالأمان نعتبر السابق كان كبير
-                # هنزود drop ثابت
+      
                 step_down = S_LEN # 120
                 
                 draw_y = current_y + step_down
                 
-                # حفظ
                 layout_map[i] = {'x': draw_x, 'y': draw_y, 'w': turn_w, 'h': turn_h, 'angle': turn_angle, 'item': item}
                 
-                # تحديث الحالة للي بعده
-                current_y = draw_y # نزلنا تحت
-                current_x = draw_x # الـ X الجديد هو سنتر الكارت ده
+                current_y = draw_y 
+                current_x = draw_x 
                 
-                # نعكس الاتجاه
                 direction *= -1
                 
-                # نجهز الـ current_x للكارت الجاي
-                # الكارت الجاي هيمشي عكس الاتجاه، هيبدأ من حافة الكارت ده
                 if direction == 1: current_x += turn_w/2 + GAP
                 else: current_x -= (turn_w/2 + GAP)
                 
             else:
-                # --- الوضع العادي (Straight) ---
+                
                 draw_x = current_x + (w/2) if direction == 1 else current_x - (w/2)
                 draw_y = current_y
                 
                 layout_map[i] = {'x': draw_x, 'y': draw_y, 'w': w, 'h': h, 'angle': ang, 'item': item}
                 
-                # تحديث X للي بعده
+       
                 if direction == 1: current_x += w + GAP
                 else: current_x -= (w + GAP)
 
-        # --- معالجة اليسار (Left Chain) ---
-        # نبدأ من حافة كارت البداية الشمال
         current_x = -w_start / 2 - GAP
         current_y = 0
-        direction = -1 # start moving left
+        direction = -1 
         
         for i in range(start_idx - 1, -1, -1):
             item = self.board[i]
@@ -534,8 +495,7 @@ class DominoGame:
                        (direction == 1 and far_edge > GRID_LIMIT_X)
             
             if at_limit:
-                # Turn Down (Vertical)
-                turn_angle = 0 if card.v2 == con else 180 # Notice v2 here
+                turn_angle = 0 if card.v2 == con else 180 
                 if card.is_double: turn_angle = 0
                 turn_w, turn_h = S_WID, S_LEN
                 
@@ -543,12 +503,6 @@ class DominoGame:
                     draw_x = current_x + GAP + turn_w/2
                 else:
                     draw_x = current_x - GAP - turn_w/2
-                
-                # Unified Look: Both chains drop DOWN (Snake style)
-                # This prevents overlap with player hand which is at bottom, 
-                # but since we center everything, it's safer to go UP for Left chain?
-                # No, standard domino snake goes away from center or spirals.
-                # Let's make Left chain go UP to balance the screen.
                 
                 step_up = S_LEN 
                 draw_y = current_y - step_up # Go UP
@@ -604,9 +558,9 @@ class DominoGame:
     def run(self):
         self.start_new_round()
         running = True
-        
+
         while running:
-            if self.message and pygame.time.get_ticks() - self.message_timer > 2000:
+            if self.message and pygame.time.get_ticks() - self.message_timer > 1000:
                 self.message = ""
 
             if not self.round_active:
@@ -632,10 +586,10 @@ class DominoGame:
                     if stock_zone.collidepoint(mx, my):
                          # ممنوع السحب لو معاك لعب
                          if self.can_play(self.player_hand):
-                             self.set_message("العب من ورقك!")
+                             self.set_message("Play from your cards")
                          # ممنوع السحب في اول دور
                          elif self.forced_start_card:
-                             self.set_message("لازم تلعب الأول!")
+                             self.set_message("play first!")
                          else:
                              if self.stock:
                                  card = self.stock.pop()
@@ -647,17 +601,17 @@ class DominoGame:
                                  if fits_l or fits_r: 
                                      side = 'left' if fits_l else 'right'
                                      self.play_card(card, side, 'player')
-                                     self.set_message("سحبت ولعبت!")
+                                     self.set_message("pulled and played!")
                                  else:
                                      self.player_hand.append(card)
-                                     self.set_message("سحبت (مش لايقة)")
+                                     self.set_message("pulled and not suitable")
                                      if not self.stock and not self.can_play(self.player_hand):
-                                         self.set_message("باص (السحب خلص)")
+                                         self.set_message("pass!")
                                          self.ai.record_pass(self.ends)
                                          self.turn = 'comp'
                              else:
                                  if not self.can_play(self.player_hand):
-                                     self.set_message("باص!")
+                                     self.set_message("pass!")
                                      self.turn = 'comp'
                                      self.ai.record_pass(self.ends)
 
@@ -669,7 +623,7 @@ class DominoGame:
                         if r.collidepoint(mx, my):
                             # فرض الكارت الاجباري
                             if self.forced_start_card and c != self.forced_start_card:
-                                self.set_message(f"لازم تلعب {self.forced_start_card}")
+                                self.set_message(f"You must play{self.forced_start_card}")
                                 continue
 
                             if self.selected_card == c: self.selected_card = None; self.valid_zones = []
