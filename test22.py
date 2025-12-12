@@ -20,7 +20,7 @@ SCREEN_WIDTH = 1366
 SCREEN_HEIGHT = 768
 FPS = 60
 
-BASE_PATH = r"D:\College\Level 3\AI\Labs\DominosGame"
+BASE_PATH = r"D:\learn\Dominos Game\Media"
 
 # مقاسات الكارت
 CARD_W, CARD_H = 60, 120
@@ -993,3 +993,4 @@ class DominoGame:
 if __name__ == "__main__":
     game = DominoGame()
     game.run()
+
